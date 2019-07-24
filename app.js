@@ -298,10 +298,6 @@ function authorizeAdmin(req, res, next) {
 socket.on("connection", function(conn) {
 	console.log("Client is connected\n");
 
-	conn.conn.on("upgrade", function(transport) {
-		conn.emit("connectError", "transport changed: " + transport);
-	});
-
 	conn.on("userConnected", function(id) {
 		conn.join(id);
 	});
@@ -870,6 +866,9 @@ socket.on("connection", function(conn) {
 							statusCode: 500,
 							statusMessage: "Internal Server Error"
 						};
+
+						console.log(res.err);
+						console.log();
 
 						conn.emit("loginError", error);
 						console.log(error.statusCode + " - " + error.statusMessage + "\n");
