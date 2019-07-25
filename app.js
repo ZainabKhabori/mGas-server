@@ -302,6 +302,9 @@ socket.on("connection", function(conn) {
 		conn.join(id);
 	});
 
+
+	// Test
+
 	conn.on("consumerRegisterOtp", async function(mobile) {
 		console.log("Client emit - register send OTP\n");
 
