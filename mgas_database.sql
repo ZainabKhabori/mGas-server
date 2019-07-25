@@ -1,5 +1,5 @@
 create database mGas;
-use mGas;
+use MGAS006_mGas;
 
 create table locations
 (
@@ -241,6 +241,9 @@ delete from users where id='45c88b92c845d135b942d88d304d0264';
 select * from services;
 
 delete from services where id='b1dfdbf170844f5b404d03e61f78e378';
+
+delete from orderServices;
+delete from orders;
 
 select * from orders;
 select * from orderServices;
