@@ -1,5 +1,6 @@
 create database mGas;
 use MGAS006_mGas;
+use mGas_sub;
 
 create table locations
 (

@@ -762,7 +762,6 @@ socket.on("connection", function(conn) {
 		request.input("bankAccountName", sql.NVarChar(200), encrypt(bankAccountName));
 		request.input("bankAccountNo", sql.NVarChar(140), encrypt(bankAccountNo.toString()));
 		request.input("addressLine1", sql.NVarChar(500), encrypt(addressLine1));
-		request.input("addressLine2", sql.NVarChar(500), encrypt(addressLine2));
 		request.input("city", sql.NVarChar(200), encrypt(city));
 		request.input("province", sql.NVarChar(200), encrypt(province));
 		request.input("governorate", sql.NVarChar(200), encrypt(governorate));
@@ -778,6 +777,12 @@ socket.on("connection", function(conn) {
 		request.input("signDoc", sql.NVarChar(500), encrypt(baseUrl + signDocImgName));
 		request.input("civilDefianceCert", sql.NVarChar(500), encrypt(baseUrl + civilDefianceCertImgName));
 		request.input("lpgSaleApproval", sql.NVarChar(500), encrypt(baseUrl + lpgSaleApprovalImgName));
+
+		if (addressLine2) {
+			request.input("addressLine2", sql.NVarChar(500), encrypt(addressLine2));
+		} else {
+			request.input("addressLine2", sql.NVarChar(500), addressLine2);
+		}
 
 		var q = "insert into users(id, mobileNo, password, email, idNo, fName, lName, userType)" +
 			"values(@id, @mobile, @pass, @email, @idNo, @fName, @lName, @userType);" +
@@ -3321,6 +3326,157 @@ app.get("/guestLogin", async function(req, res) {
 	console.log(resp);
 	console.log();
 });
+
+/*app.post("/test", async function(req, res) {
+	console.log("POST request - Add test driver request\n");
+
+	try {
+		var driver = req.body;
+
+		var mobile = driver.mobileNo;
+		var pass = driver.password;
+		var email = driver.email;
+		var idNo = driver.idNo;
+		var fname = driver.fname;
+		var lname = driver.lname;
+
+		var plateCode = driver.plateCode;
+		var plateNumber = driver.plateNumber;
+		var bankName = driver.bankName;
+		var bankBranch = driver.bankBranch;
+		var bankAccountName = driver.bankAccountName;
+		var bankAccountNo = driver.bankAccountNo;
+		var addressLine1 = driver.addressLine1;
+		var addressLine2 = driver.addressLine2;
+		var city = driver.city;
+		var province = driver.province;
+		var governorate = driver.governorate;
+		var country = driver.country;
+		var gasTransCert = driver.gasTransCert;
+		var civilCerts = driver.civilCerts;
+		var applicationCreditForm = driver.applicationCreditForm;
+		var cr = driver.cr;
+		var occiCert = driver.occiCert;
+		var sponsorId = driver.sponsorId;
+		var guaranteeCheque = driver.guaranteeCheque;
+		var signDoc = driver.signDoc;
+		var civilDefianceCert = driver.civilDefianceCert;
+		var lpgSaleApproval = driver.lpgSaleApproval;
+
+		var id = crypto.createHash("md5").update(idNo.toString()).digest("hex");
+
+		var gasTransCertImg = fs.readFileSync(gasTransCert);
+		var civilCertsImg = fs.readFileSync(civilCerts);
+		var applicationCreditFormImg = fs.readFileSync(applicationCreditForm);
+		var crImg = fs.readFileSync(cr);
+		var occiCertImg = fs.readFileSync(occiCert);
+		var sponsorIdImg = fs.readFileSync(sponsorId);
+		var guaranteeChequeImg = fs.readFileSync(guaranteeCheque);
+		var signDocImg = fs.readFileSync(signDoc);
+		var civilDefianceCertImg = fs.readFileSync(civilDefianceCert);
+		var lpgSaleApprovalImg = fs.readFileSync(lpgSaleApproval);
+
+		var gasTransCertImgName = "gasTransCert." +
+			gasTransCert.split('.')[gasTransCert.split('.').length - 1];
+		var civilCertsImgName = "civilCerts." +
+			civilCerts.split('.')[civilCerts.split('.').length - 1];
+		var applicationCreditFormImgName = "applicationCreditForm." +
+			applicationCreditForm.split('.')[applicationCreditForm.split('.').length - 1];
+		var crImgName = "cr." + cr.split('.')[cr.split('.').length - 1];
+		var occiCertImgName = "occiCert." + occiCert.split('.')[occiCert.split('.').length - 1];
+		var sponsorIdImgName = "sponsorId." + sponsorId.split('.')[sponsorId.split('.').length - 1];
+		var guaranteeChequeImgName = "guaranteeCheque." +
+			guaranteeCheque.split('.')[guaranteeCheque.split('.').length - 1];
+		var signDocImgName = "signDoc." + signDoc.split('.')[signDoc.split('.').length - 1];
+		var civilDefianceCertImgName = "civilDefianceCert." +
+			civilDefianceCert.split('.')[civilDefianceCert.split('.').length - 1];
+		var lpgSaleApprovalImgName = "lpgSaleApproval." +
+			lpgSaleApproval.split('.')[lpgSaleApproval.split('.').length - 1];
+
+		var dir = __dirname + "/Images/Users/" + id + "/";
+
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir);
+		}
+
+		fs.writeFileSync(dir + gasTransCertImgName, gasTransCertImg);
+		fs.writeFileSync(dir + civilCertsImgName, civilCertsImg);
+		fs.writeFileSync(dir + applicationCreditFormImgName, applicationCreditFormImg);
+		fs.writeFileSync(dir + crImgName, crImg);
+		fs.writeFileSync(dir + occiCertImgName, occiCertImg);
+		fs.writeFileSync(dir + sponsorIdImgName, sponsorIdImg);
+		fs.writeFileSync(dir + guaranteeChequeImgName, guaranteeChequeImg);
+		fs.writeFileSync(dir + signDocImgName, signDocImg);
+		fs.writeFileSync(dir + civilDefianceCertImgName, civilDefianceCertImg);
+		fs.writeFileSync(dir + lpgSaleApprovalImgName, lpgSaleApprovalImg);
+
+		var baseUrl = imageFolderUrl + "/Users/" + id + "/";
+
+		var request = new sql.Request();
+		request.input("id", sql.Char(32), id);
+		request.input("mobile", sql.Int, mobile);
+		request.input("pass", sql.Char(60), bcrypt.hashSync(pass, 10));
+		request.input("email", sql.NVarChar(300), encrypt(email));
+		request.input("idNo", sql.NVarChar(120), encrypt(idNo.toString()));
+		request.input("fname", sql.NVarChar(140), encrypt(fname));
+		request.input("lname", sql.NVarChar(140), encrypt(lname));
+		request.input("userType", sql.NVarChar(8), "driver");
+		request.input("plateCode", sql.NVarChar(108), encrypt(plateCode));
+		request.input("plateNumber", sql.NVarChar(116), encrypt(plateNumber.toString()));
+		request.input("bankName", sql.NVarChar(160), encrypt(bankName));
+		request.input("bankBranch", sql.NVarChar(140), encrypt(bankBranch));
+		request.input("bankAccountName", sql.NVarChar(200), encrypt(bankAccountName));
+		request.input("bankAccountNo", sql.NVarChar(140), encrypt(bankAccountNo.toString()));
+		request.input("addressLine1", sql.NVarChar(500), encrypt(addressLine1));
+		request.input("city", sql.NVarChar(200), encrypt(city));
+		request.input("province", sql.NVarChar(200), encrypt(province));
+		request.input("governorate", sql.NVarChar(200), encrypt(governorate));
+		request.input("country", sql.NVarChar(200), encrypt(country));
+		request.input("gasTransCert", sql.NVarChar(500), encrypt(baseUrl + gasTransCertImgName));
+		request.input("civilCerts", sql.NVarChar(500), encrypt(baseUrl + civilCertsImgName));
+		request.input("applicationCreditForm", sql.NVarChar(500),
+			encrypt(baseUrl + applicationCreditFormImgName));
+		request.input("cr", sql.NVarChar(500), encrypt(baseUrl + crImgName));
+		request.input("occiCert", sql.NVarChar(500), encrypt(baseUrl + occiCertImgName));
+		request.input("sponsorId", sql.NVarChar(500), encrypt(baseUrl + sponsorIdImgName));
+		request.input("guaranteeCheque", sql.NVarChar(500), encrypt(baseUrl + guaranteeChequeImgName));
+		request.input("signDoc", sql.NVarChar(500), encrypt(baseUrl + signDocImgName));
+		request.input("civilDefianceCert", sql.NVarChar(500), encrypt(baseUrl + civilDefianceCertImgName));
+		request.input("lpgSaleApproval", sql.NVarChar(500), encrypt(baseUrl + lpgSaleApprovalImgName));
+
+		if (addressLine2) {
+			request.input("addressLine2", sql.NVarChar(500), encrypt(addressLine2));
+		} else {
+			request.input("addressLine2", sql.NVarChar(500), addressLine2);
+		}
+
+		var q = "insert into users(id, mobileNo, password, email, idNo, fName, lName, userType)" +
+			"values(@id, @mobile, @pass, @email, @idNo, @fName, @lName, @userType);" +
+			"insert into drivers values(@id, @plateCode, @plateNumber, @bankName, @bankBranch, " +
+			"@bankAccountName, @bankAccountNo, @addressLine1, @addressLine2, @city, @province, " +
+			"@governorate, @country, @gasTransCert, @civilCerts, @applicationCreditForm, " +
+			"@cr, @occiCert, @sponsorId, @guaranteeCheque, @signDoc, @civilDefianceCert, @lpgSaleApproval)";
+
+		await request.query(q);
+
+		res.json({
+			msg: "Driver registered successfully"
+		});
+
+		console.log(res.statusCode + " - " + res.statusMessage + "\n");
+		console.log("Driver registered successfully\n");
+	} catch (err) {
+		var msg = "Error while creating user: " + err;
+
+		res.json({
+			error: msg
+		});
+
+		console.log(res.statusCode + " - " + res.statusMessage + "\n");
+		console.log(err);
+		console.log();
+	}
+});*/
 
 app.get("/", async function(req, res) {
 	res.send("mGas Web Service");
