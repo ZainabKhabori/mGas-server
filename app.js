@@ -389,14 +389,12 @@ socket.on("connection", function(conn) {
 				} else*/
 		if (otp !== conn.handshake.otp) {
 			msg = "OTP code is incorrect";
-			// arabicMsg = "الرمز المدخل غير صحيح";
-			arabicMsg = otp + " " + conn.handshake.otp;
+			arabicMsg = "الرمز المدخل غير صحيح";
 			statusCode = 403;
 			statusMessage = "Forbidden";
 		} else {
 			msg = "Verified";
-			// arabicMsg = "تم التحقيق";
-			arabicMsg = otp + " " + conn.handshake.otp;
+			arabicMsg = "تم التحقيق";
 			statusCode = 200;
 			statusMessage = "OK";
 		}
@@ -1982,33 +1980,38 @@ function sendCode(code, mobile, isOTP) {
 		request(options, function(err, resp, body) {
 			var res;
 
-			if (err) {
-				res = {
-					err: err
-				};
-				resolve(res);
-			} else {
-				var xmlParser = new xml2js.Parser();
-				xmlParser.parseString(body, function(err, result) {
-					var sendRes = result["soap:Envelope"]["soap:Body"][0].SendSMSResponse[0].SendSMSResult[0];
+			res = {
+				sendTime: Date.now()
+			};
+			resolve(res);
 
-					console.log(resp.statusCode + " - " + resp.statusMessage + "\n");
-					console.log(sendRes);
-					console.log();
+			/*			if (err) {
+							res = {
+								err: err
+							};
+							resolve(res);
+						} else {
+							var xmlParser = new xml2js.Parser();
+							xmlParser.parseString(body, function(err, result) {
+								var sendRes = result["soap:Envelope"]["soap:Body"][0].SendSMSResponse[0].SendSMSResult[0];
 
-					if (sendRes.StatusCode[0] !== "00") {
-						res = {
-							err: sendRes.StatusDesc
-						};
-						resolve(res);
-					} else {
-						res = {
-							sendTime: Date.now()
-						};
-						resolve(res);
-					}
-				});
-			}
+								console.log(resp.statusCode + " - " + resp.statusMessage + "\n");
+								console.log(sendRes);
+								console.log();
+
+								if (sendRes.StatusCode[0] !== "00") {
+									res = {
+										err: sendRes.StatusDesc
+									};
+									resolve(res);
+								} else {
+									res = {
+										sendTime: Date.now()
+									};
+									resolve(res);
+								}
+							});
+						}*/
 		});
 	});
 }
