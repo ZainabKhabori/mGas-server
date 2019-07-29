@@ -1333,8 +1333,8 @@ socket.on("connection", function(conn) {
 			var location = await r.query(getLocation);
 			location = location.recordset[0];
 
-			location.longitude = parseFloat(location.longitude);
-			location.latitude = parseFloat(location.latitude);
+			location.longitude = parseFloat(decrypt(location.longitude));
+			location.latitude = parseFloat(decrypt(location.latitude));
 			location.addressLine1 = decrypt(location.addressLine1);
 			location.city = decrypt(location.city);
 			location.province = decrypt(location.province);
@@ -3485,7 +3485,7 @@ app.get("/", async function(req, res) {
 	res.send("mGas Web Service");
 });
 
-server.listen(process.env.PORT || 8080, function() {
+server.listen(16949 || 8080, function() {
 	var host = server.address().address;
 	var port = server.address().port;
 
