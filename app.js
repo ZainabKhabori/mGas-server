@@ -914,7 +914,7 @@ socket.on("connection", function(conn) {
 		var user = conn.handshake.user;
 		delete user.password;
 		user.email = decrypt(user.email);
-		user.idNo = parseInt(user.idNo);
+		user.idNo = parseInt(decrypt(user.idNo));
 		user.fName = decrypt(user.fName);
 		user.lName = decrypt(user.lName);
 		if (user.displayPicUrl && user.displayPicThumb) {
@@ -1108,8 +1108,8 @@ socket.on("connection", function(conn) {
 				}
 
 				for (var loc of orderLocations) {
-					loc.longitude = parseFloat(loc.longitude);
-					loc.latitude = parseFloat(loc.latitude);
+					loc.longitude = parseFloat(decrypt(loc.longitude));
+					loc.latitude = parseFloat(decrypt(loc.latitude));
 					loc.addressLine1 = decrypt(loc.addressLine1);
 					loc.city = decrypt(loc.city);
 					loc.province = decrypt(loc.province);
@@ -1887,14 +1887,14 @@ socket.on("connection", function(conn) {
 	conn.on("sendNotification", async function(notificationId) {
 		console.log("Client emit - Send a notification\n");
 
-		var r = new sql.Request();
-		r.input("id", sql.Char(32), notificationId);
-
-		var getNotif = "select * from notifications where id=@id";
-		var getInteractiveNotif = "select * from interactiveNotifications where notificationId=@id";
-		var getChoices = "select * from interactiveNotifChoices where interactiveNotifId=@id";
-
 		try {
+			var r = new sql.Request();
+			r.input("id", sql.Char(32), notificationId);
+
+			var getNotif = "select * from notifications where id=@id";
+			var getInteractiveNotif = "select * from interactiveNotifications where notificationId=@id";
+			var getChoices = "select * from interactiveNotifChoices where interactiveNotifId=@id";
+
 			var notif = await r.query(getNotif);
 			notif = notif.recordset[0];
 
@@ -1909,10 +1909,17 @@ socket.on("connection", function(conn) {
 				notif.choices = choices;
 			}
 
-			conn.broadcast.emit("notificationSent", notif);
+			await sendNotification("all", notif);
 
-			console.log("200 - OK\n");
-			console.log("Notification sent\n");
+			var msg = {
+				msg: "Notification sent",
+				statusCode: 200,
+				statusMessage: "OK"
+			};
+
+			conn.emit("sendNotificationSuccess", msg);
+			console.log(msg.statusCode + " - " + msg.statusMessage + "\n");
+			console.log(msg.msg + "\n");
 		} catch (err) {
 			var error = {
 				msg: "Error: Could not send notification: " + err,
@@ -2036,6 +2043,39 @@ function geocode(address, bounds) {
 		};
 
 		request(options, function(err, res, body) {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(body);
+			}
+		});
+	});
+}
+
+function sendNotification(user, data) {
+	return new Promise(function(resolve, reject) {
+		var url = "https://fcm.googleapis.com/fcm/send";
+
+		var message = {
+			data: data,
+			to: "/topics/" + user
+		};
+
+		var key = "key=" + process.env.CLOUD_MESSAGING_SERVER_KEY;
+
+		headers = {
+			"Authorization": key
+		};
+
+		var options = {
+			url: url,
+			method: "POST",
+			headers: headers,
+			body: message,
+			json: true
+		};
+
+		request(options, function(err, resp, body) {
 			if (err) {
 				reject(err);
 			} else {
@@ -2788,80 +2828,80 @@ app.post("/notifications", authorizeAdmin, async function(req, res) {
 app.post("/interactiveNotifications", authorizeAdmin, async function(req, res) {
 	console.log("POST request - create interactive push notification request\n");
 
-	var title = req.body.title;
-	var arabicTitle = req.body.arabicTitle;
-	var text = req.body.text;
-	var arabicText = req.body.arabicText;
-	var imgUrl = req.body.imgUrl;
-	var scheduledTime = req.body.scheduledTime;
-	var correctChoice = req.body.correctChoiceTitle;
-	var choices = req.body.choices;
+	try {
+		var title = req.body.title;
+		var arabicTitle = req.body.arabicTitle;
+		var text = req.body.text;
+		var arabicText = req.body.arabicText;
+		var imgUrl = req.body.imgUrl;
+		var scheduledTime = req.body.scheduledTime;
+		var correctChoice = req.body.correctChoiceTitle;
+		var choices = req.body.choices;
 
-	var id = crypto.createHash("md5").update(title + text).digest("hex");
+		var id = crypto.createHash("md5").update(title + text).digest("hex");
 
-	var img = fs.readFileSync(imgUrl);
-	var imgName = "image" + imgUrl.split('.')[imgUrl.split('.').length - 1];
-	var dir = __dirname + "/Images/Notifications/" + id + "/";
+		var img = fs.readFileSync(imgUrl);
+		var imgName = "image" + imgUrl.split('.')[imgUrl.split('.').length - 1];
+		var dir = __dirname + "/Images/Notifications/" + id + "/";
 
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir);
-	}
-
-	fs.writeFileSync(dir + imgName, img);
-
-	var r = new sql.Request();
-	r.input("id", sql.Char(32), id);
-	r.input("title", sql.NVarChar(30), title);
-	r.input("arabicTitle", sql.NVarChar(80), arabicTitle);
-	r.input("text", sql.NVarChar(500), text);
-	r.input("arabicText", sql.NVarChar(200), arabicText);
-	r.input("img", sql.NVarChar(200), dir + imgName);
-	r.input("scheduledTime", sql.DateTime, new Date(scheduledTime));
-	r.input("type", sql.NVarChar(11), "interactive");
-	r.input("correctChoice", sql.NVarChar(20), correctChoice);
-
-	var q = "insert into notifications values(@id, @title, @arabicTitle, @text, @arabicText, " +
-		"@img, @scheduledTime, @type); " +
-		"insert into interactiveNotifications(notificationId) values(@id); ";
-
-	var x = 0;
-	for (var c of choices) {
-		var choiceTitle = c.title;
-		var choiceArabicTitle = c.arabicTitle;
-		var desc = c.description;
-		var arabicDesc = c.arabicDesc;
-
-		var choiceId = crypto.createHash("md5").update(id + title + text).digest("hex");
-
-		r.input("choiceId" + x, sql.Char(32), choiceId);
-		r.input("choiceTitle" + x, sql.NVarChar(20), choiceTitle);
-		r.input("choiceArabicTitle" + x, sql.NVarChar(20), choiceArabicTitle);
-		r.input("desc" + x, sql.NVarChar(200), desc);
-		r.input("arabicDesc" + x, sql.NVarChar(200), arabicDesc);
-
-		if (c.imgUrl) {
-			var choicImgUrl = c.imgUrl;
-			var choiceImg = fs.readFileSync(choicImgUrl);
-			var choiceImgName = choiceTitle + choicImgUrl.split('.')[choicImgUrl.split('.').length - 1];
-			fs.writeFileSync(dir + choiceImgName, choiceImg);
-			r.input("choiceImg" + x, sql.NVarChar(200), dir + choiceImgName);
-		} else {
-			r.input("choiceImg" + x, sql.NVarChar(200), null);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir);
 		}
 
-		q += "insert into interactiveNotifChoices(id, interactiveNotifId, title, arabicTitle, " +
-			"description, arabicDescription, image) " +
-			"values(@choiceId" + x + ", @id" + x + ", @choiceTitle" + x + ", @arabicTitle" + x +
-			", @desc" + x + ", @arabicDesc" + x + ", @choiceImg" + x + "); ";
+		fs.writeFileSync(dir + imgName, img);
 
-		x++;
-	}
+		var r = new sql.Request();
+		r.input("id", sql.Char(32), id);
+		r.input("title", sql.NVarChar(30), title);
+		r.input("arabicTitle", sql.NVarChar(80), arabicTitle);
+		r.input("text", sql.NVarChar(500), text);
+		r.input("arabicText", sql.NVarChar(200), arabicText);
+		r.input("img", sql.NVarChar(200), dir + imgName);
+		r.input("scheduledTime", sql.DateTime, new Date(scheduledTime));
+		r.input("type", sql.NVarChar(11), "interactive");
+		r.input("correctChoice", sql.NVarChar(20), correctChoice);
 
-	q += "insert into interactiveNotifications(correctChoice, notificationId) " +
-		"select c.id, @id from interactiveNotifChoices as c where c.title=@correctChoice " +
-		"and c.interactiveNotifId=@id";
+		var q = "insert into notifications values(@id, @title, @arabicTitle, @text, @arabicText, " +
+			"@img, @scheduledTime, @type); " +
+			"insert into interactiveNotifications(notificationId) values(@id); ";
 
-	try {
+		var x = 0;
+		for (var c of choices) {
+			var choiceTitle = c.title;
+			var choiceArabicTitle = c.arabicTitle;
+			var desc = c.description;
+			var arabicDesc = c.arabicDesc;
+
+			var choiceId = crypto.createHash("md5").update(id + choiceTitle + desc).digest("hex");
+
+			r.input("choiceId" + x, sql.Char(32), choiceId);
+			r.input("choiceTitle" + x, sql.NVarChar(20), choiceTitle);
+			r.input("choiceArabicTitle" + x, sql.NVarChar(20), choiceArabicTitle);
+			r.input("desc" + x, sql.NVarChar(200), desc);
+			r.input("arabicDesc" + x, sql.NVarChar(200), arabicDesc);
+
+			if (c.imgUrl) {
+				var choicImgUrl = c.imgUrl;
+				var choiceImg = fs.readFileSync(choicImgUrl);
+				var choiceImgName = choiceTitle + choicImgUrl.split('.')[choicImgUrl.split('.').length - 1];
+				fs.writeFileSync(dir + choiceImgName, choiceImg);
+				r.input("choiceImg" + x, sql.NVarChar(200), dir + choiceImgName);
+			} else {
+				r.input("choiceImg" + x, sql.NVarChar(200), null);
+			}
+
+			q += "insert into interactiveNotifChoices(id, interactiveNotifId, title, arabicTitle, " +
+				"description, arabicDescription, image) " +
+				"values(@choiceId" + x + ", @id, @choiceTitle" + x + ", @choiceArabicTitle" + x +
+				", @desc" + x + ", @arabicDesc" + x + ", @choiceImg" + x + "); ";
+
+			x++;
+		}
+
+		q += "update interactiveNotifications set correctChoice=" +
+			"(select c.id from interactiveNotifChoices as c where c.title=@correctChoice " +
+			"and c.interactiveNotifId=@id) where notificationId=@id";
+
 		await r.query(q);
 
 		res.json({
@@ -3480,6 +3520,81 @@ app.get("/guestLogin", async function(req, res) {
 		console.log();
 	}
 });*/
+
+app.post("/test", async function(req, res) {
+	console.log("POST request - test send notification request\n");
+
+	try {
+		var notificationId = req.body.notificationId;
+
+		var r = new sql.Request();
+		r.input("id", sql.Char(32), notificationId);
+
+		var getNotif = "select * from notifications where id=@id";
+		var getInteractiveNotif = "select * from interactiveNotifications where notificationId=@id";
+		var getChoices = "select * from interactiveNotifChoices where interactiveNotifId=@id";
+
+		var notif = await r.query(getNotif);
+		notif = notif.recordset[0];
+
+		if (notif.type === "interactive") {
+			var interactiveNotif = await r.query(getInteractiveNotif);
+			interactiveNotif = interactiveNotif.recordset[0];
+
+			var choices = await r.query(getChoices);
+			choices = choices.recordset;
+
+			notif.correctChoice = interactiveNotif.correctChoice;
+			notif.choices = choices;
+		}
+
+		var url = "https://fcm.googleapis.com/fcm/send";
+
+		var message = {
+			data: notif,
+			to: "/topics/all"
+		};
+
+		var key = "key=" + process.env.CLOUD_MESSAGING_SERVER_KEY;
+
+		headers = {
+			"Authorization": key
+		};
+
+		var options = {
+			url: url,
+			method: "POST",
+			headers: headers,
+			body: message,
+			json: true
+		};
+
+		request(options, function(err, resp, body) {
+			if (err) {
+				res.json({
+					error: "Error: Could not send notification: " + err
+				});
+			} else {
+				console.log(body);
+				console.log();
+
+				res.json({
+					msg: "Notification sent"
+				});
+			}
+		});
+	} catch (err) {
+		var error = {
+			msg: "Error: Could not send notification: " + err,
+			statusCode: 400,
+			statusMessage: "Bad Request"
+		};
+
+		res.json({
+			error: error
+		});
+	}
+});
 
 app.get("/", async function(req, res) {
 	res.send("mGas Web Service");
