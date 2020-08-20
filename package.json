@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "arabic-reshaper": "^1.1.0",
-    "bcrypt": "^3.0.4",
+    "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
     "country-data": "0.0.31",
     "countryjs": "^1.8.0",
